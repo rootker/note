@@ -1,0 +1,145 @@
+#!/bin/bash
+Author="smokeroot"
+# Exit if fail
+set -o errexit
+set -e
+# Change Default Editor
+editor="vim"
+# Name Of Script Without .sh
+sc=$(basename $0)
+# Where Notes should be keep
+store="$HOME/.notes.db"
+# Backup Dir
+backup="$HOME/backup"
+# if file not exists prompt to create new one
+if ! [ -f $store ];then
+	echo " [!] Notes File $store"
+	read -p " [!] Create New : " nr
+fi
+if [ "$nr" = "y" ] || [ "$nr" = "Y" ] || [ "$nr" = "Yes" ] || [ "$nr" = "yes" ];then
+	touch $store || echo "file didnt not created"
+	exit 0
+fi
+# show help page
+help() {
+  cat <<EOF
+Description: Simple Note app
+Usage: note [flag] or note "Your Note Here"
+  #-u  Update
+  	-a or --add    | to add special charcater if normal mode not work
+  	-d or --delete | to delete note using line number
+	-c or --copy   | to copy note
+	-m or --merge  | to delete file
+	-e or --edit   | to edit file
+	-a or --add    | to add note
+	-v or --version| show version and exit
+	-s or --search | search on notes files
+	-l or --line   | grep specific line use -l for print lins
+	-h  Show this help and exit
+Examples:
+  note "Your Note here"
+EOF
+}
+# if arguments empty show help and exit
+# use copy mode with fzf
+copy() {
+	# check if fzf exists or note
+	if ! hash fzf 2>/dev/null;then
+	echo " You Need To install fzf"
+	exit
+else
+	cat $store|fzf|xclip -selection clipboard
+fi
+}
+# merge will earse data of file it encrypted using shred command with zeros
+delete(){
+	if [ -z $2 ];then
+		echo " [+] $sc -d Line Number ${2}"
+		exit
+	else
+		sed ${2}d -i $store
+		echo " [!] line $2 Deleted."
+		exit
+	fi
+}
+merge(){
+	echo " Note This Will Delete Note Forever"
+	read -p " [!] Are You sure : (y\n) " del
+	if [ "$del" = "y" ];then
+		echo " [!] Running Command Shred"
+		shred -z $store
+		rm $store
+		touch $store
+	else
+		echo " [!] Ok."
+		exit 0
+	fi
+	if [ $? == "0" ];then
+		echo " [*] File $store Hash Been Merged"
+	else
+		echo " [!] Somthing Not Right."
+	fi
+}
+# Argumants
+function add(){
+	read -p "[+] ENTER NOTE : " note
+	echo "${note}" >> $store
+	echo "[*] Note Add Succiful"
+}
+function search(){
+	if [ -z "$@" ];then
+	read -p "-> " serch
+	cat -n $store | grep -iE "$serch"
+	else
+	cat -n $store | grep -i "$@"
+	fi
+}
+function addnotefile(){
+dir="/home/moux/.ntki/"
+if [ ! -d $dir ];then
+    echo $dir
+    mkdir -p $dir || echo "somthing worng"
+fi
+#if [ ! -d $dirnotes ];then
+#    read -p "[!] Create $dirnotes : " tcr
+#    case $tcr in
+#        y|yes|Y|YES) mkdir -p $dirnotes && [[ -d $dirnotes ]] && echo "Directory is created" || echo "dir not created";;
+#        n|no|N|NO) echo "EXIT..." && exit;;
+#        *) echo "YES OR NO" && exit;;
+#    esac
+#fi
+if [ -z "$2" ];then
+    read -p "ENTER NAME : " filename
+    touch $dir/$filename
+    vim $dir/$filename
+    exit
+else
+    touch $2 $dirnotes
+    vim $dirnotes/$2
+fi
+}
+function addx(){
+if [ ! -z "$1" ];then
+    echo $@ >> $store;
+else
+    help
+fi
+}
+case $1 in
+	-add|-a)add;;
+	-copy|-c) copy;;
+	-delete|-d) delete $@;;
+	-b|-backup) cp -v $store $backup;exit;;
+	-merge|-m) merge;;
+	-help|-h)help;;
+	-ls|-print) cat -n $store;;
+	-e|-edit) num="$2";vim +$num $store;;
+	--add|-a) echo "$@" >> $store;;
+	-v|--version) echo " [!] Version is : 1.0";exit;;
+	-s|--search) search $2$3$4$5$6;;
+	-l|--line) sed -n -e $2p $store;;
+    -lf|-files) ls $dirnotes | fzf ;;
+    -f|--file) addnotefile $@;;
+    -*) cat -n $store;;
+	*) addx $@;;
+esac

@@ -1,5 +1,5 @@
 #!/bin/bash
-Author="smokeroot"
+Author="https://github.com/rootker"
 # Exit if fail
 set -o errexit
 set -e
